@@ -1,5 +1,6 @@
 import { Component, ViewChild, ElementRef, OnInit, AfterViewInit, Renderer2 } from '@angular/core';
 import * as SvgPanZoom from 'svg-pan-zoom';
+import * as Hammer from 'hammerjs';
 
 @Component({
   selector: 'app-root',
@@ -20,14 +21,57 @@ export class AppComponent implements OnInit, AfterViewInit {
       zoomEnabled: true,
       controlIconsEnabled: false,
       fit: true,
-      center: true
+      center: true,
+      customEventsHandler: {
+        haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
+        init: function(options){
+          var instance = options.instance
+              , initialScale = 1
+              , pannedX = 0
+              , pannedY = 0
+
+            this.hammer = Hammer(options.svgElement, {
+              inputClass: Hammer.SUPPORT_POINTER_EVENTS ? Hammer.PointerEventInput : Hammer.TouchInput
+            })
+
+            this.hammer.get('pinch').set({enable: true})
+
+            this.hammer.on('doubletap', function(ev){
+              instance.zoomIn()
+            })
+
+            this.hammer.on('panstart panmove', function(ev){
+              if (ev.type === 'panstart') {
+                pannedX = 0
+                pannedY = 0
+              }
+
+              instance.panBy({x: ev.deltaX - pannedX, y: ev.deltaY - pannedY})
+              pannedX = ev.deltaX
+              pannedY = ev.deltaY
+            })
+
+            this.hammer.on('pinchstart pinchmove', function(ev){
+              if (ev.type === 'pinchstart') {
+                initialScale = instance.getZoom()
+                instance.zoomAtPoint(initialScale * ev.scale, {x: ev.center.x, y: ev.center.y})
+              }
+
+              instance.zoomAtPoint(initialScale * ev.scale, {x: ev.center.x, y: ev.center.y})
+            })
+            options.svgElement.addEventListener('touchmove', function(e){ e.preventDefault(); });
+        },
+        destroy: function() {}
+      }
     });
+    
   }
 
   ngAfterViewInit() {
     this.rect = this.elSvg.nativeElement.getBoundingClientRect();
     this.elSvg.nativeElement.addEventListener('mousedown', (e) => this.mouseDownEvent(e));
-    this.elSvg.nativeElement.addEventListener('mousemove', (e) => this.mouseOverEvent(e));
+    this.elSvg.nativeElement.addEventListener('touchstart', (e) => this.mouseDownEvent(e));
+    // this.elSvg.nativeElement.addEventListener('mousemove', (e) => this.mouseOverEvent(e));
   }
 
   draw() {
@@ -62,13 +106,13 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
   }
 
-  private mouseOverEvent(event) {
-    if (!this.drawing) {
-      return;
-    }
-    // <path d="M171 81 L175 217" stroke="#000" />
-    // console.log(event);
-  }
+  // private mouseOverEvent(event) {
+  //   if (!this.drawing) {
+  //     return;
+  //   }
+  //   // <path d="M171 81 L175 217" stroke="#000" />
+  //   // console.log(event);
+  // }
 
   private getMousePosition(e) {
     return {
