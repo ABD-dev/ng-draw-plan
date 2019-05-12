@@ -4,7 +4,8 @@ import {
   ElementRef,
   OnInit,
   AfterViewInit,
-  Renderer2
+  Renderer2,
+  HostListener
 } from '@angular/core';
 import * as SvgPanZoom from 'svg-pan-zoom';
 import * as Hammer from 'hammerjs';
@@ -15,6 +16,12 @@ import * as Hammer from 'hammerjs';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit, AfterViewInit {
+  @HostListener('window:resize', ['$event'])
+  getScreenSize(event?) {
+    this.screenWidth = window.innerWidth;
+    this.screenHeight = window.innerHeight-200;
+  }
+
   @ViewChild('svg')
   private elSvg: ElementRef;
   private rect: any;
@@ -24,19 +31,56 @@ export class AppComponent implements OnInit, AfterViewInit {
     y: 0
   };
   private scale = 1;
-  
+  private panZoom: SvgPanZoom.Instance;
+  private screenHeight;
+  private screenWidth;
+
+  drawAreaSize = {
+    width: 400,
+    height: 400
+  };
+  viewBox = `0 0 ${this.drawAreaSize.width} ${this.drawAreaSize.height}`;
   drawing = false;
 
-  constructor(private renderer: Renderer2) {}
+  constructor(private renderer: Renderer2) {
+    this.getScreenSize();
+  }
 
   ngOnInit() {
-    let svgPanZoom: SvgPanZoom.Instance = SvgPanZoom('#draw-svg', {
+    this.drawAreaSize = {
+      width: this.screenWidth,
+      height: this.screenHeight
+    };
+    this.viewBox = `0 0 ${this.drawAreaSize.width} ${this.drawAreaSize.height}`;
+  }
+
+  ngAfterViewInit() {
+    this.initPanZoom();
+    this.rect = this.elSvg.nativeElement.getBoundingClientRect();
+    this.elSvg.nativeElement.addEventListener('mousedown', e =>
+      this.mouseDownEvent(e)
+    );
+    this.elSvg.nativeElement.addEventListener('touchstart', e =>
+      this.mouseDownEvent(e)
+    );
+    // this.elSvg.nativeElement.addEventListener('mousemove', e =>
+    //   this.mouseOverEvent(e)
+    // );
+  }
+
+  draw() {
+    this.drawing = !this.drawing;
+    this.lastPoint = null;
+  }
+
+  private initPanZoom() {
+    this.panZoom = SvgPanZoom('#draw-svg', {
       zoomEnabled: true,
       controlIconsEnabled: false,
       fit: true,
       center: true,
       onZoom: scale => {
-        this.offset = svgPanZoom.getPan();
+        this.offset = this.panZoom.getPan();
         this.scale = scale;
       },
       onPan: newPan => {
@@ -100,24 +144,6 @@ export class AppComponent implements OnInit, AfterViewInit {
         destroy: function() {}
       }
     });
-  }
-
-  ngAfterViewInit() {
-    this.rect = this.elSvg.nativeElement.getBoundingClientRect();
-    this.elSvg.nativeElement.addEventListener('mousedown', e =>
-      this.mouseDownEvent(e)
-    );
-    this.elSvg.nativeElement.addEventListener('touchstart', e =>
-      this.mouseDownEvent(e)
-    );
-    // this.elSvg.nativeElement.addEventListener('mousemove', e =>
-    //   this.mouseOverEvent(e)
-    // );
-  }
-
-  draw() {
-    this.drawing = !this.drawing;
-    this.lastPoint = null;
   }
 
   private mouseDownEvent(event) {

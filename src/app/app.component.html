@@ -1,5 +1,5 @@
 <button type="button" (click)="draw()">Draw</button>
 <p>Draw: {{drawing}}</p>
-<div class="container">
-  <svg id="draw-svg" viewBox="0 0 400 400" #svg width="100%" height="100%" xlink="http://www.w3.org/1999/xlink"></svg>
+<div class="container" [style.width.px]="drawAreaSize.width" [style.height.px]="drawAreaSize.height">
+  <svg id="draw-svg" [attr.viewBox]="viewBox" #svg width="100%" height="100%" xlink="http://www.w3.org/1999/xlink"></svg>
 </div>
